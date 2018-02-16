@@ -16,6 +16,7 @@
 
 package com.netflix.kayenta;
 
+import com.netflix.kayenta.annotations.KayentaDataSource;
 import com.netflix.kayenta.atlas.config.AtlasConfiguration;
 import com.netflix.kayenta.aws.config.AwsConfiguration;
 import com.netflix.kayenta.config.KayentaConfiguration;
@@ -28,18 +29,22 @@ import com.netflix.kayenta.memory.config.MemoryConfiguration;
 import com.netflix.kayenta.prometheus.config.PrometheusConfiguration;
 import com.netflix.kayenta.s3.config.S3Configuration;
 import com.netflix.kayenta.stackdriver.config.StackdriverConfiguration;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.support.SpringBootServletInitializer;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 @Configuration
 @Import({
@@ -81,11 +86,24 @@ public class Main extends SpringBootServletInitializer {
 
   public static void main(String... args) {
     new SpringApplicationBuilder().properties(DEFAULT_PROPS).sources(Main.class).run(args);
+
+    scanClasspath();
   }
 
   @Override
   protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
     return application.properties(DEFAULT_PROPS).sources(Main.class);
+  }
+
+  public static void scanClasspath() {
+    System.out.println("Scanning classes...");
+    ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false);
+    provider.addIncludeFilter(new AnnotationTypeFilter(KayentaDataSource.class));
+    Set<BeanDefinition> beans = provider.findCandidateComponents("");
+    for (BeanDefinition bd : beans) {
+      System.out.println("Bean found: " + bd.getBeanClassName());
+    }
+    System.out.println("Done scanning classes.");
   }
 }
 

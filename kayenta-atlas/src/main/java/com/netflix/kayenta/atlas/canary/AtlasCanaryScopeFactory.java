@@ -16,6 +16,7 @@
 
 package com.netflix.kayenta.atlas.canary;
 
+import com.netflix.kayenta.annotations.KayentaDataSource;
 import com.netflix.kayenta.canary.CanaryScope;
 import com.netflix.kayenta.canary.CanaryScopeFactory;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ import java.util.Collections;
 import java.util.Map;
 
 @Component
+@KayentaDataSource
 public class AtlasCanaryScopeFactory implements CanaryScopeFactory {
 
   @Override
