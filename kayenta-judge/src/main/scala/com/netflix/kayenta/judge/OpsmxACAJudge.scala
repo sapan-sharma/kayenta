@@ -77,7 +77,29 @@ class OpsMxACAJudge extends CanaryJudge with StrictLogging {
     //create 1. metricResults, 2. scoreClassification
     //1.
     val metricResults = metricSetPairList.asScala.toList.map { metricPair =>
-	    val metricClassification = MetricClassification(Pass, None, 1.0)
+	    
+      metName = metricPair.getName
+      val bufferedSource = io.Source.fromFile("/home/opsmx/Documents/work/data_with_load/ScoringAndPCA/1/apm/apmScores.csv")
+      for (line <- bufferedSource.getLines) {
+
+          //init a MetricClassification object
+          val metricClassification: MetricClassification = _
+          val cols = line.split(",").map(_.trim)
+          if (cols(1).contains(metName){
+            score = cols(2)
+            if(score>0){
+              metricClassification = MetricClassification(Pass, None, 1.0)
+            }
+            else{
+              // for a fail score, we set High by default, which needs to be refined to find if it should be High/Low
+              metricClassification = MetricClassification(High, None, 1.0)
+            }
+          }
+          else{
+            metricClassification = MetricClassification(High, None, 1.0)
+          }
+        }
+      bufferedSource.close
 	    CanaryAnalysisResult.builder()
 	    .name(metricPair.getName)
 	    .id(metricPair.getId)
@@ -87,7 +109,7 @@ class OpsMxACAJudge extends CanaryJudge with StrictLogging {
 	      // .controlMetadata(Map("stats" -> DescriptiveStatistics.toMap(controlStats).asJava.asInstanceOf[Object]).asJava)
 	      // .critical(critical)
 	    .classification(metricClassification.classification.toString)
-		.classificationReason(metricClassification.reason.orNull)
+		  .classificationReason(metricClassification.reason.orNull)
 	    .build()
     }
     
