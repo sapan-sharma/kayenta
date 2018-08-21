@@ -9,7 +9,7 @@ import java.util
 import com.netflix.kayenta.canary.results._
 import com.netflix.kayenta.canary.{CanaryClassifierThresholdsConfig, CanaryConfig, CanaryJudge}
 import com.netflix.kayenta.judge.classifiers.metric._
-import com.netflix.kayenta.judge.classifiers.score.{ScoreClassification, OpsMxScoreClassifier}
+import com.netflix.kayenta.judge.classifiers.score.{ScoreClassification, ThresholdScoreClassifier}
 import com.netflix.kayenta.judge.detectors.IQRDetector
 import com.netflix.kayenta.judge.preprocessing.Transforms
 import com.netflix.kayenta.judge.scorers.{ScoreResult, WeightedSumScorer}
@@ -21,20 +21,20 @@ import com.typesafe.scalalogging.StrictLogging
 import org.springframework.stereotype.Component
 import scala.collection.JavaConverters._
 
+import com.netflix.kayenta.judge.classifiers.score
 import com.netflix.kayenta.judge.scorers.ScoreResult
 import com.netflix.kayenta.canary.results.CanaryAnalysisResult
 import com.netflix.kayenta.judge.classifiers.metric.{High, Low, Pass}
 
-import scala.collection.JavaConverters._
-
 import com.fasterxml.jackson.annotation.JsonInclude;
-
 import javax.validation.constraints.NotNull;
 import java.util.List;
 import scala.collection.mutable._
-
 import java.io._
 // import org.saddle._
+import sys.process._
+import scala.io.Source
+import collection.mutable._
 
 @Component
 class OpsMxACAJudge extends CanaryJudge with StrictLogging {
@@ -55,12 +55,12 @@ class OpsMxACAJudge extends CanaryJudge with StrictLogging {
     	val experimentValues = metricPair.getValues.get("experiment").asScala.map(_.toDouble).toArray
     	val controlValues = metricPair.getValues.get("control").asScala.map(_.toDouble).toArray
       var baseDir = "/home/opsmx/Documents/work/data_with_load/ScoringAndPCA/"
-      val writer = new PrintWriter(new File(baseDir + "1/KayentaData/version1/" +  metricName + ".csv"))
+      var writer = new PrintWriter(new File(baseDir + "1/KayentaData/version1/" +  metricName + ".csv"))
       for (x <- controlValues) {
         writer.write(x + "\n")  // however you want to format it
       }
       writer.close()
-      val writer = new PrintWriter(new File(baseDir + "1/KayentaData/version2/" +  metricName + ".csv"))
+      writer = new PrintWriter(new File(baseDir + "1/KayentaData/version2/" +  metricName + ".csv"))
       for (x <- experimentValues) {
         writer.write(x + "\n")
       }
@@ -70,24 +70,25 @@ class OpsMxACAJudge extends CanaryJudge with StrictLogging {
   	CanaryJudgeResult.builder().build()
 
     //call OpsMx Analysis
-    val results = "/usr/bin/Rscript /home/opsmx/Documents/work/Analytics/R-code/kayentaWrapper.R" !!
-    logger.info(results)
+    val rResult = "/usr/bin/Rscript /home/ubuntu/R-code/kayentaWrapper.R" !!
+    // logger.info(rResult)
+    // println(rResult)
 
     // consume ResultJson and build result object
     //create 1. metricResults, 2. scoreClassification
     //1.
     val metricResults = metricSetPairList.asScala.toList.map { metricPair =>
 	    
-      metName = metricPair.getName
-      val bufferedSource = io.Source.fromFile("/home/opsmx/Documents/work/data_with_load/ScoringAndPCA/1/apm/apmScores.csv")
+      val metName = metricPair.getName
+      var metricClassification = MetricClassification(Pass, None, 1.0) //initialize only
+      val bufferedSource = scala.io.Source.fromFile("/home/ubuntu/ScoringAndPCA/1/apm/apmScores.csv")
       for (line <- bufferedSource.getLines) {
 
           //init a MetricClassification object
-          val metricClassification: MetricClassification = _
           val cols = line.split(",").map(_.trim)
-          if (cols(1).contains(metName){
-            score = cols(2)
-            if(score>0){
+          if (cols(1).contains(metName)){
+            val score = cols(2)
+            if(score == "100"){
               metricClassification = MetricClassification(Pass, None, 1.0)
             }
             else{
@@ -100,6 +101,8 @@ class OpsMxACAJudge extends CanaryJudge with StrictLogging {
           }
         }
       bufferedSource.close
+
+
 	    CanaryAnalysisResult.builder()
 	    .name(metricPair.getName)
 	    .id(metricPair.getId)
@@ -114,15 +117,11 @@ class OpsMxACAJudge extends CanaryJudge with StrictLogging {
     }
     
     //2.
-    val scoreClassifier = new OpsMxScoreClassifier(scoreThresholds.getPass, scoreThresholds.getMarginal)
-    val scoreClassification = scoreClassifier.classify(null)
-    buildCanaryResult(null, scoreClassification, metricResults)
-	}
+    // val scoreClassifier = new OpsMxScoreClassifier(scoreThresholds.getPass, scoreThresholds.getMarginal)
+    // val scoreClassification = scoreClassifier.classify(null)
+    val scoreClassification = ScoreClassification(com.netflix.kayenta.judge.classifiers.score.Pass, None, 100.00)
 
 
-
-	def buildCanaryResult(scores: ScoreResult, scoreClassification: ScoreClassification,
-                        metricResults: List[CanaryAnalysisResult]): CanaryJudgeResult ={
     //Construct the summary score result object
     val summaryScore = CanaryJudgeScore.builder()
       .score(scoreClassification.score)
@@ -137,5 +136,5 @@ class OpsMxACAJudge extends CanaryJudge with StrictLogging {
       .results(results)
       // .groupScores(groupScores.asJava)
       .build()
-  }
+	}
 }
