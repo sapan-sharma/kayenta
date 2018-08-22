@@ -54,7 +54,7 @@ class OpsMxACAJudge extends CanaryJudge with StrictLogging {
     	val metricName = metricPair.getName
     	val experimentValues = metricPair.getValues.get("experiment").asScala.map(_.toDouble).toArray
     	val controlValues = metricPair.getValues.get("control").asScala.map(_.toDouble).toArray
-      var baseDir = "/home/opsmx/Documents/work/data_with_load/ScoringAndPCA/"
+      var baseDir = "/home/ubuntu/ScoringAndPCA/"
       var writer = new PrintWriter(new File(baseDir + "1/KayentaData/version1/" +  metricName + ".csv"))
       for (x <- controlValues) {
         writer.write(x + "\n")  // however you want to format it
