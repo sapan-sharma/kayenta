@@ -46,7 +46,10 @@ class OpsMxACAJudge extends CanaryJudge with StrictLogging {
   override def judge(canaryConfig: CanaryConfig,
                      scoreThresholds: CanaryClassifierThresholdsConfig,
                      metricSetPairList: util.List[MetricSetPair]): CanaryJudgeResult = {
-  	//create config object
+  	
+
+    logger.info("--------------------Initializing OpmMx Kayenta judge---------------------------------------------")
+    //create config object
   	//create canary id(for config)
   	val canaryid = 1
 
